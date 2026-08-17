@@ -8,7 +8,10 @@ from sqlmodel import Session
 from app.db.models import Claim as ClaimRow
 from app.db.models import Submission
 from app.db.session import get_session
+from app.graph.nodes.entailment import EntailmentError
 from app.graph.nodes.extractor import ClaimExtractionError, extract_claims
+from app.graph.nodes.reranker import RerankerError
+from app.graph.verification import verify_claim
 from app.retrieval.service import retrieve_evidence
 from app.retrieval.store import VectorStoreError
 from app.retrieval.tavily import ExternalSearchError
@@ -17,6 +20,8 @@ from app.schemas import (
     AnalyzeClaimsResponse,
     AnalyzeEvidenceRequest,
     AnalyzeEvidenceResponse,
+    VerifyClaimRequest,
+    VerifyClaimResponse,
 )
 
 router = APIRouter(prefix="/analyze", tags=["analysis"])
@@ -94,3 +99,26 @@ async def analyze_evidence(
         evidence=outcome.evidence,
         external_search_used=outcome.external_search_used,
     )
+
+
+@router.post("/verify", response_model=VerifyClaimResponse)
+async def verify_claim_evidence(
+    payload: VerifyClaimRequest,
+) -> VerifyClaimResponse:
+    try:
+        return await asyncio.to_thread(
+            verify_claim,
+            payload.claim,
+            payload.candidate_limit,
+            payload.evidence_limit,
+        )
+    except (
+        EntailmentError,
+        ExternalSearchError,
+        RerankerError,
+        VectorStoreError,
+    ) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(error),
+        ) from error
