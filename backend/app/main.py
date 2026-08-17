@@ -1,10 +1,24 @@
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.config import settings
+from app.db.session import create_db_and_tables
 from app.health import dependency_health
+from app.routers.analyze import router as analyze_router
 
-app = FastAPI(title="Axiom API")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    await asyncio.to_thread(create_db_and_tables)
+    yield
+
+
+app = FastAPI(title="Axiom API", lifespan=lifespan)
 app.state.settings = settings
+app.include_router(analyze_router)
 
 
 @app.get("/health")
