@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: str = Field(min_length=1)
     QDRANT_COLLECTION: str = "axiom-passages"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L6-v2"
+    ENTAILMENT_MODEL: str = "cross-encoder/nli-MiniLM2-L6-H768"
     RETRIEVAL_FALLBACK_THRESHOLD: float = Field(default=0.35, ge=0, le=1)
+    USE_HF_INFERENCE_API: bool = False
+    HF_TOKEN: str | None = None
     DATABASE_URL: str = Field(min_length=1)
     TAVILY_API_KEY: str = Field(min_length=1)
 

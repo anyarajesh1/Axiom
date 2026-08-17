@@ -8,6 +8,7 @@ VerdictLabel = Literal[
     "contradicted",
     "insufficient_evidence",
 ]
+EntailmentLabel = Literal["entailment", "contradiction", "neutral"]
 
 
 class Claim(BaseModel):
@@ -45,6 +46,14 @@ class Evidence(BaseModel):
     source_url: str = Field(min_length=1)
     category: str = Field(default="uncategorized", min_length=1)
     score: float = Field(ge=0, le=1)
+    reranker_score: float | None = Field(default=None, ge=0, le=1)
+
+
+class EntailmentResult(BaseModel):
+    evidence_id: UUID
+    label: EntailmentLabel
+    confidence: float = Field(ge=0, le=1)
+    scores: dict[EntailmentLabel, float]
 
 
 class AnalyzeEvidenceRequest(BaseModel):
@@ -55,6 +64,19 @@ class AnalyzeEvidenceRequest(BaseModel):
 class AnalyzeEvidenceResponse(BaseModel):
     claim: str
     evidence: list[Evidence]
+    external_search_used: bool
+
+
+class VerifyClaimRequest(BaseModel):
+    claim: str = Field(min_length=1, max_length=4_000)
+    candidate_limit: int = Field(default=8, ge=1, le=12)
+    evidence_limit: int = Field(default=5, ge=1, le=8)
+
+
+class VerifyClaimResponse(BaseModel):
+    claim: str
+    evidence: list[Evidence]
+    entailments: list[EntailmentResult]
     external_search_used: bool
 
 
@@ -70,4 +92,7 @@ class PipelineState(BaseModel):
     input_text: str = Field(min_length=1)
     claims: list[Claim] = Field(default_factory=list)
     evidence_by_claim: dict[UUID, list[Evidence]] = Field(default_factory=dict)
+    entailment_by_claim: dict[UUID, list[EntailmentResult]] = Field(
+        default_factory=dict
+    )
     verdicts: list[Verdict] = Field(default_factory=list)
