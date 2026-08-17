@@ -41,8 +41,21 @@ class AnalyzeClaimsResponse(BaseModel):
 class Evidence(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     text: str = Field(min_length=1)
+    source_name: str = Field(default="Unknown source", min_length=1)
     source_url: str = Field(min_length=1)
+    category: str = Field(default="uncategorized", min_length=1)
     score: float = Field(ge=0, le=1)
+
+
+class AnalyzeEvidenceRequest(BaseModel):
+    claim: str = Field(min_length=1, max_length=4_000)
+    limit: int = Field(default=5, ge=1, le=10)
+
+
+class AnalyzeEvidenceResponse(BaseModel):
+    claim: str
+    evidence: list[Evidence]
+    external_search_used: bool
 
 
 class Verdict(BaseModel):
