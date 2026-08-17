@@ -5,6 +5,7 @@ langgraph
 qdrant-client
 groq
 sqlmodel
+psycopg[binary]
 sentence-transformers
 python-dotenv
 httpx
