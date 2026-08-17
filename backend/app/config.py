@@ -8,6 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     GROQ_API_KEY: str = Field(min_length=1)
+    GROQ_MODEL: str = "openai/gpt-oss-20b"
     QDRANT_URL: str = Field(min_length=1)
     QDRANT_API_KEY: str = Field(min_length=1)
     DATABASE_URL: str = Field(min_length=1)
