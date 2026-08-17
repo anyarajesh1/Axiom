@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "openai/gpt-oss-20b"
     QDRANT_URL: str = Field(min_length=1)
     QDRANT_API_KEY: str = Field(min_length=1)
+    QDRANT_COLLECTION: str = "axiom-passages"
+    EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    RETRIEVAL_FALLBACK_THRESHOLD: float = Field(default=0.35, ge=0, le=1)
     DATABASE_URL: str = Field(min_length=1)
     TAVILY_API_KEY: str = Field(min_length=1)
 
