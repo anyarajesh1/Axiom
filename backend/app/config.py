@@ -1,0 +1,23 @@
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+
+
+class Settings(BaseSettings):
+    GROQ_API_KEY: str = Field(min_length=1)
+    QDRANT_URL: str = Field(min_length=1)
+    QDRANT_API_KEY: str = Field(min_length=1)
+    DATABASE_URL: str = Field(min_length=1)
+    TAVILY_API_KEY: str = Field(min_length=1)
+
+    model_config = SettingsConfigDict(
+        env_file=ROOT_DIR / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+
+settings = Settings()
