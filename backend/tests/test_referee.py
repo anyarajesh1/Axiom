@@ -9,6 +9,7 @@ from app.schemas import (
     ContradictionSummary,
     EntailmentResult,
     Evidence,
+    RefereeDecision,
 )
 
 
@@ -102,3 +103,10 @@ def test_referee_skips_groq_when_no_evidence() -> None:
 
     assert verdict.label == "insufficient_evidence"
     assert verdict.confidence == 0
+
+
+def test_referee_schema_is_compatible_with_groq_strict_mode() -> None:
+    schema = RefereeDecision.model_json_schema()
+
+    assert set(schema["required"]) == set(schema["properties"])
+    assert "format" not in schema["properties"]["evidence_ids"]["items"]

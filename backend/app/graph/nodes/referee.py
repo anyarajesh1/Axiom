@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Callable
+from uuid import UUID
 
 from groq import Groq
 from pydantic import ValidationError
@@ -136,14 +137,19 @@ def decide_verdict(
         logger.error("Referee request failed with %s.", type(error).__name__)
         raise RefereeError("The referee service is unavailable.") from error
 
+    try:
+        cited_ids = [UUID(item) for item in decision.evidence_ids]
+    except ValueError as error:
+        raise RefereeError("The referee returned an invalid evidence ID.") from error
+
     available_ids = {item.id for item in evidence}
-    if not set(decision.evidence_ids).issubset(available_ids):
+    if not set(cited_ids).issubset(available_ids):
         raise RefereeError("The referee cited an unknown evidence ID.")
 
     return Verdict(
         claim_id=claim.id,
         label=decision.label,
         confidence=decision.confidence,
-        evidence_ids=decision.evidence_ids,
+        evidence_ids=cited_ids,
         explanation=decision.explanation,
     )

@@ -102,7 +102,7 @@ class RefereeDecision(BaseModel):
 
     label: VerdictLabel
     confidence: float = Field(ge=0, le=1)
-    evidence_ids: list[UUID] = Field(default_factory=list)
+    evidence_ids: list[str]
     explanation: str = Field(min_length=1, max_length=400)
 
     @field_validator("explanation")
