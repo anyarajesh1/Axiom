@@ -2,6 +2,10 @@ import httpx
 
 from app.config import settings
 from app.retrieval.corpus import CorpusPassage
+from app.retrieval.source_quality import (
+    is_acceptable_source,
+    source_priority,
+)
 
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 
@@ -16,9 +20,9 @@ def search_tavily(query: str, max_results: int = 5) -> list[CorpusPassage]:
             TAVILY_SEARCH_URL,
             json={
                 "api_key": settings.TAVILY_API_KEY,
-                "query": query,
+                "query": f"{query} authoritative source explanation",
                 "search_depth": "basic",
-                "max_results": max_results,
+                "max_results": max(max_results * 2, 8),
                 "include_answer": False,
                 "include_raw_content": False,
             },
@@ -35,7 +39,11 @@ def search_tavily(query: str, max_results: int = 5) -> list[CorpusPassage]:
     for result in results:
         content = " ".join(str(result.get("content", "")).split())
         source_url = result.get("url")
-        if len(content) < 20 or not source_url:
+        if (
+            len(content) < 20
+            or not source_url
+            or not is_acceptable_source(str(source_url))
+        ):
             continue
         passages.append(
             CorpusPassage(
@@ -45,4 +53,8 @@ def search_tavily(query: str, max_results: int = 5) -> list[CorpusPassage]:
                 category="web_search",
             )
         )
-    return passages
+    return sorted(
+        passages,
+        key=lambda passage: source_priority(str(passage.source_url)),
+        reverse=True,
+    )[:max_results]

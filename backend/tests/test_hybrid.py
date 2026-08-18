@@ -60,3 +60,22 @@ def test_hybrid_retrieval_merges_dense_and_lexical_results(
     assert {item.id for item in result.evidence} == {dense_id, lexical_id}
     assert result.evidence[0].score == 1.0
     assert result.relevance == 1.0
+
+
+def test_common_words_do_not_make_an_unrelated_query_relevant(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    moon_id = uuid4()
+    records = [
+        (moon_id, payload("The Moon is a natural satellite.", "Moon")),
+    ]
+    monkeypatch.setattr(
+        hybrid,
+        "dense_search",
+        lambda *_args, **_kwargs: [(moon_id, records[0][1], 0.2)],
+    )
+    monkeypatch.setattr(hybrid, "scroll_passages", lambda: records)
+
+    result = hybrid.retrieve_local("The sky is blue.")
+
+    assert result.relevance == 0.2

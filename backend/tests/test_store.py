@@ -46,7 +46,10 @@ def test_dense_search_returns_payload_and_score(
                 id=point_id,
                 version=1,
                 score=0.82,
-                payload={"text": "A useful passage."},
+                payload={
+                    "text": "A useful passage.",
+                    "source_url": "https://example.com/source",
+                },
             )
         ]
     )
@@ -54,4 +57,35 @@ def test_dense_search_returns_payload_and_score(
 
     results = store.dense_search("query", client=client)
 
-    assert results == [(point_id, {"text": "A useful passage."}, 0.82)]
+    assert results == [
+        (
+            point_id,
+            {
+                "text": "A useful passage.",
+                "source_url": "https://example.com/source",
+            },
+            0.82,
+        )
+    ]
+
+
+def test_dense_search_filters_social_media_sources(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    client = Mock()
+    client.query_points.return_value = Mock(
+        points=[
+            models.ScoredPoint(
+                id=store.passage_id("https://facebook.com/post", "lyrics"),
+                version=1,
+                score=0.99,
+                payload={
+                    "text": "A song lyric that happens to match the claim.",
+                    "source_url": "https://facebook.com/post",
+                },
+            )
+        ]
+    )
+    monkeypatch.setattr(store, "embed_texts", lambda _: [[0.0] * 384])
+
+    assert store.dense_search("Trees are green", client=client) == []

@@ -8,6 +8,7 @@ from sentence_transformers import SentenceTransformer
 
 from app.config import settings
 from app.retrieval.corpus import CorpusPassage
+from app.retrieval.source_quality import is_acceptable_payload
 
 VECTOR_SIZE = 384
 
@@ -104,16 +105,18 @@ def dense_search(
         response = qdrant.query_points(
             collection_name=settings.QDRANT_COLLECTION,
             query=embed_texts([query])[0],
-            limit=limit,
+            limit=max(limit * 3, 30),
             with_payload=True,
         )
     except Exception as error:
         raise VectorStoreError("Axiom could not search its passage index.") from error
 
-    return [
+    results = [
         (UUID(str(point.id)), point.payload or {}, float(point.score))
         for point in response.points
+        if is_acceptable_payload(point.payload or {})
     ]
+    return results[:limit]
 
 
 def scroll_passages(
@@ -133,7 +136,9 @@ def scroll_passages(
                 with_vectors=False,
             )
             records.extend(
-                (UUID(str(record.id)), record.payload or {}) for record in page
+                (UUID(str(record.id)), record.payload or {})
+                for record in page
+                if is_acceptable_payload(record.payload or {})
             )
             if offset is None:
                 break

@@ -10,6 +10,35 @@ from app.schemas import Evidence
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 RRF_K = 60
+STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "because",
+    "by",
+    "for",
+    "from",
+    "has",
+    "have",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "that",
+    "the",
+    "this",
+    "to",
+    "was",
+    "were",
+    "will",
+    "with",
+}
 
 
 @dataclass(frozen=True)
@@ -20,6 +49,10 @@ class LocalRetrieval:
 
 def tokenize(text: str) -> list[str]:
     return TOKEN_PATTERN.findall(text.lower())
+
+
+def meaningful_tokens(text: str) -> set[str]:
+    return {token for token in tokenize(text) if token not in STOP_WORDS}
 
 
 def lexical_rank(
@@ -91,14 +124,21 @@ def retrieve_local(query: str, limit: int = 5) -> LocalRetrieval:
     ]
 
     best_dense = max((score for _, _, score in dense), default=0.0)
-    query_terms = set(tokenize(query))
-    best_overlap = max(
-        (
-            len(query_terms & set(tokenize(str(payload.get("text", "")))))
-            / len(query_terms)
-            for _, payload in records
-        ),
-        default=0.0,
+    query_terms = meaningful_tokens(query)
+    best_overlap = (
+        max(
+            (
+                len(
+                    query_terms
+                    & meaningful_tokens(str(payload.get("text", "")))
+                )
+                / len(query_terms)
+                for _, payload in records
+            ),
+            default=0.0,
+        )
+        if query_terms
+        else 0.0
     )
     relevance = min(1.0, max(0.0, best_dense, best_overlap))
     return LocalRetrieval(evidence=evidence, relevance=relevance)
