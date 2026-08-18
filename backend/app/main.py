@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db.session import create_db_and_tables
-from app.graph.verification import warm_verification_models
 from app.health import dependency_health
 from app.routers.analyze import router as analyze_router
 
@@ -15,7 +14,6 @@ from app.routers.analyze import router as analyze_router
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await asyncio.to_thread(create_db_and_tables)
-    await asyncio.to_thread(warm_verification_models)
     yield
 
 
