@@ -1,67 +1,114 @@
 # Axiom
 
-Axiom is an evidence-led claim analysis application. Give it a statement or a
-short paragraph and it extracts checkable claims, retrieves relevant sources,
-compares supporting and contradictory evidence, and returns an explained
-verdict with citations.
+### Evidence-led claim analysis with sources you can inspect
 
-## Live application
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Orchestration-1C3C3C)](https://www.langchain.com/langgraph)
+[![CI](https://github.com/anyarajesh1/Axiom/actions/workflows/ci.yml/badge.svg)](https://github.com/anyarajesh1/Axiom/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/anyarajesh1/Axiom)](https://github.com/anyarajesh1/Axiom/releases/latest)
 
-- Web app: https://axiom-ten-alpha.vercel.app
-- API: https://axiom-api-togb.onrender.com
-- Interactive API documentation: https://axiom-api-togb.onrender.com/docs
+> **Status:** Live and deployed — no account required.
 
-The API runs on a free Render instance and may take up to a minute to wake after
-a period of inactivity.
+## Live demo
 
-## How it works
+**[Try Axiom](https://axiom-ten-alpha.vercel.app)**
 
-1. A Groq-hosted language model extracts individual claims from the input.
-2. Axiom retrieves candidate passages from Qdrant and can fall back to Tavily
-   web search when the local corpus is not sufficient.
-3. The pipeline reranks the candidates and classifies each relationship as
-   support, contradiction, or neutral.
-4. A referee step weighs the evidence and produces a verdict, confidence score,
-   explanation, and source list.
-5. Submissions, claims, and verdicts are persisted in Neon Postgres.
+- Frontend: [axiom-ten-alpha.vercel.app](https://axiom-ten-alpha.vercel.app)
+- Backend API: [axiom-api-togb.onrender.com](https://axiom-api-togb.onrender.com)
+- API documentation: [axiom-api-togb.onrender.com/docs](https://axiom-api-togb.onrender.com/docs)
 
-The analysis pipeline is orchestrated with LangGraph. Production uses a
-low-memory inference path designed for the Render free tier; local development
-can use the included sentence-transformer models.
+The API uses a free Render instance, so the first analysis after a period of
+inactivity may take up to a minute while the service wakes.
 
-## Technology
+---
 
-- Next.js 16, React 19, TypeScript, and Tailwind CSS
-- FastAPI, Pydantic, SQLModel, and LangGraph
-- Groq for structured language-model inference
-- Qdrant for corpus retrieval
-- Tavily for external search fallback
-- Neon Postgres for persistence
-- Vercel for the frontend and Render for the API
-- GitHub Actions for linting, tests, and production builds
+## What is Axiom?
 
-## Repository layout
+Axiom turns a statement or short paragraph into an inspectable claim-analysis
+report. Instead of returning only an answer, it shows the evidence behind the
+result so the user can make the final call.
+
+It can:
+
+- Extract individual, checkable claims from natural-language input
+- Retrieve relevant passages from a curated vector corpus
+- Search the web when the local corpus is not sufficient
+- Separate supporting, contradictory, and neutral material
+- Return an explained verdict with confidence and source links
+- Persist submissions, claims, and verdicts for later analysis
+
+## How the pipeline works
 
 ```text
-backend/          FastAPI application, analysis graph, tests, and corpus tooling
-frontend/         Next.js application
-axiom_corpus/     Curated starter passages and source metadata
-docs/             Project documentation
-.github/workflows Continuous integration
-render.yaml       Render backend blueprint
+Input text
+    ↓
+Claim extraction
+    ↓
+Qdrant retrieval ── insufficient results ──→ Tavily search
+    ↓
+Evidence reranking
+    ↓
+Entailment and contradiction analysis
+    ↓
+Evidence ranking
+    ↓
+Referee verdict + explanation + citations
 ```
 
-## Local development
+LangGraph coordinates the pipeline. Groq provides structured language-model
+inference, Qdrant stores the retrieval corpus, Tavily supplies external search
+fallbacks, and Neon Postgres stores completed analyses.
 
-### 1. Configure the environment
+## Tech stack
 
-Copy the example file and add your own credentials. Never commit `.env`.
+### Frontend
+
+- **Next.js 16** with the App Router
+- **React 19** and **TypeScript**
+- **Tailwind CSS 4**
+- **Vercel** deployment
+
+### Backend and AI
+
+- **FastAPI** and **Pydantic** for the API and schemas
+- **LangGraph** for pipeline orchestration
+- **Groq** for claim extraction, low-memory inference, and final verdicts
+- **Sentence Transformers** for local reranking and entailment
+- **SQLModel** for persistence models
+
+### Data and infrastructure
+
+- **Qdrant** for vector and corpus retrieval
+- **Tavily** for external search fallback
+- **Neon Postgres** for submissions, claims, and verdicts
+- **Render** for the production API
+- **GitHub Actions** for backend and frontend CI
+
+---
+
+## Getting started locally
+
+### Prerequisites
+
+- Python 3.13
+- Node.js 24+
+- Credentials for Groq, Qdrant, Neon, and Tavily
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/anyarajesh1/Axiom.git
+cd Axiom
+```
+
+### 2. Configure the environment
 
 ```bash
 cp .env.example .env
 ```
 
-Required service values:
+Add your own values to `.env`:
 
 ```text
 GROQ_API_KEY
@@ -71,12 +118,9 @@ DATABASE_URL
 TAVILY_API_KEY
 ```
 
-The defaults in `.env.example` configure the Groq model, local CORS origins,
-and the full local inference path.
+Never commit `.env`. It is already excluded by the repository `.gitignore`.
 
-### 2. Run the backend
-
-Python 3.13 is used by the project.
+### 3. Start the backend
 
 ```bash
 cd backend
@@ -85,16 +129,17 @@ python3 -m venv .venv
 ./.venv/bin/python3 -m uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://127.0.0.1:8000`. To seed the curated
-passages into the configured Qdrant collection, run:
+The API will run at `http://127.0.0.1:8000`.
+
+Seed the curated Axiom passages into the configured Qdrant collection:
 
 ```bash
 ./.venv/bin/python3 -m scripts.seed_corpus
 ```
 
-### 3. Run the frontend
+### 4. Start the frontend
 
-In another terminal:
+In a second terminal:
 
 ```bash
 cd frontend
@@ -105,21 +150,45 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## API endpoints
+---
 
-- `GET /health` — API liveness
-- `GET /health/deps` — Groq, Qdrant, and Neon connectivity
-- `POST /analyze` — complete claim-analysis pipeline
-- `POST /analyze/claims` — claim extraction only
-- `POST /analyze/evidence` — evidence retrieval only
-- `POST /analyze/verify` — retrieval, reranking, and entailment analysis
+## API
 
-Example:
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | API liveness |
+| `GET` | `/health/deps` | Groq, Qdrant, and Neon connectivity |
+| `POST` | `/analyze` | Complete claim-analysis pipeline |
+| `POST` | `/analyze/claims` | Claim extraction only |
+| `POST` | `/analyze/evidence` | Evidence retrieval only |
+| `POST` | `/analyze/verify` | Retrieval, reranking, and entailment |
+
+Example request:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/analyze \
   -H "Content-Type: application/json" \
   -d '{"text":"Earthquake magnitude is measured on a logarithmic scale."}'
+```
+
+## Project structure
+
+```text
+Axiom/
+├── backend/
+│   ├── app/
+│   │   ├── db/                 # SQLModel persistence
+│   │   ├── graph/              # LangGraph pipeline and analysis nodes
+│   │   ├── retrieval/          # Qdrant, Tavily, and source-quality logic
+│   │   └── routers/            # FastAPI endpoints
+│   ├── scripts/                # Corpus seeding tools
+│   └── tests/                  # Backend test suite
+├── frontend/
+│   └── src/app/                # Next.js interface
+├── axiom_corpus/               # Curated passages and source metadata
+├── docs/                       # Project documentation
+├── .github/workflows/          # Continuous integration
+└── render.yaml                 # Render deployment blueprint
 ```
 
 ## Quality checks
@@ -134,9 +203,21 @@ npm run lint
 npm run build
 ```
 
+The current release passes 52 backend tests as well as frontend linting,
+TypeScript validation, and a production build.
+
+## Production profile
+
+Local development uses the included sentence-transformer models. The deployed
+API uses a low-memory inference path designed for Render's free instance while
+preserving the same retrieval, verification, and verdict stages.
+
 ## Responsible use
 
 Axiom is a research and demonstration tool, not an infallible fact-checker.
-Model outputs and retrieved material can be incomplete or incorrect. Review the
-linked sources before relying on a verdict for consequential decisions.
+Models and retrieved sources can be incomplete, outdated, or incorrect. Always
+review the linked material before using a verdict for an important decision.
 
+---
+
+Built by [Anya Rajesh](https://github.com/anyarajesh1).
