@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 from collections.abc import Sequence
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from qdrant_client import QdrantClient, models
-from sentence_transformers import SentenceTransformer
 
 from app.config import settings
 from app.retrieval.corpus import CorpusPassage
 from app.retrieval.source_quality import is_acceptable_payload
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 VECTOR_SIZE = 384
 
@@ -19,6 +23,8 @@ class VectorStoreError(RuntimeError):
 
 @lru_cache(maxsize=1)
 def get_embedder() -> SentenceTransformer:
+    from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(settings.EMBEDDING_MODEL)
 
 

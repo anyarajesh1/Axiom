@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 import math
 from collections.abc import Callable, Sequence
 from functools import lru_cache
-
-from sentence_transformers import CrossEncoder
+from typing import TYPE_CHECKING
 
 from app.config import settings
 from app.schemas import Evidence
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 ScorePairs = Callable[[list[tuple[str, str]]], Sequence[float]]
 
@@ -16,6 +20,8 @@ class RerankerError(RuntimeError):
 
 @lru_cache(maxsize=1)
 def get_reranker() -> CrossEncoder:
+    from sentence_transformers import CrossEncoder
+
     return CrossEncoder(settings.RERANKER_MODEL)
 
 

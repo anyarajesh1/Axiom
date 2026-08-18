@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 from collections.abc import Callable, Sequence
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
-from sentence_transformers import CrossEncoder
 
 from app.config import settings
 from app.schemas import EntailmentLabel, EntailmentResult, Evidence
+
+if TYPE_CHECKING:
+    from sentence_transformers import CrossEncoder
 
 LABELS: tuple[EntailmentLabel, ...] = (
     "contradiction",
@@ -26,6 +30,8 @@ class EntailmentError(RuntimeError):
 
 @lru_cache(maxsize=1)
 def get_entailment_model() -> CrossEncoder:
+    from sentence_transformers import CrossEncoder
+
     return CrossEncoder(settings.ENTAILMENT_MODEL)
 
 
