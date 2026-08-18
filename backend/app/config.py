@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     HF_TOKEN: str | None = None
     DATABASE_URL: str = Field(min_length=1)
     TAVILY_API_KEY: str = Field(min_length=1)
+    FRONTEND_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    @property
+    def frontend_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.FRONTEND_ORIGINS.split(",")
+            if origin.strip()
+        ]
 
     model_config = SettingsConfigDict(
         env_file=ROOT_DIR / ".env",
