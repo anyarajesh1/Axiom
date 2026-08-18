@@ -94,3 +94,39 @@ def test_low_memory_fallback_returns_web_results_without_upsert(
 
     assert outcome.external_search_used is True
     assert outcome.evidence[0].source_name == "USGS"
+
+
+def test_low_memory_fallback_preserves_relevant_local_candidates(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    local = make_evidence().model_copy(
+        update={"source_name": "US Department of Energy"}
+    )
+    passage = CorpusPassage(
+        text="A web passage that supplements the trusted local corpus result.",
+        source_name="External source",
+        source_url="https://example.com/external",
+        category="web_search",
+    )
+    monkeypatch.setattr(service.settings, "LOW_MEMORY_MODE", True)
+    monkeypatch.setattr(
+        service,
+        "retrieve_local",
+        lambda *_: LocalRetrieval([local], relevance=0.3),
+    )
+    monkeypatch.setattr(
+        service,
+        "search_tavily",
+        lambda *_args, **_kwargs: [passage],
+    )
+
+    outcome = service.retrieve_evidence(
+        "Every electric vehicle battery must be replaced after five years.",
+        limit=5,
+    )
+
+    assert outcome.external_search_used is True
+    assert [item.source_name for item in outcome.evidence] == [
+        "US Department of Energy",
+        "External source",
+    ]

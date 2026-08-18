@@ -41,6 +41,32 @@ def external_evidence(
     return evidence
 
 
+def merge_evidence(
+    local: list[Evidence],
+    external: list[Evidence],
+    limit: int,
+) -> list[Evidence]:
+    """Keep trusted corpus candidates while adding web-search coverage."""
+    if limit <= 0:
+        return []
+
+    local_quota = min(len(local), max(1, (limit + 1) // 2))
+    candidates = [*local[:local_quota], *external]
+    candidates.extend(local[local_quota:])
+
+    merged: list[Evidence] = []
+    seen: set[tuple[str, str]] = set()
+    for item in candidates:
+        key = (str(item.source_url), " ".join(item.text.lower().split()))
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(item)
+        if len(merged) == limit:
+            break
+    return merged
+
+
 def retrieve_evidence(query: str, limit: int = 5) -> RetrievalOutcome:
     local = retrieve_local(query, limit)
     if local.evidence and local.relevance >= settings.RETRIEVAL_FALLBACK_THRESHOLD:
@@ -57,8 +83,9 @@ def retrieve_evidence(query: str, limit: int = 5) -> RetrievalOutcome:
         return RetrievalOutcome(local.evidence, external_search_used=False)
 
     if settings.LOW_MEMORY_MODE:
+        web_evidence = external_evidence(query, external_passages, limit)
         return RetrievalOutcome(
-            external_evidence(query, external_passages, limit),
+            merge_evidence(local.evidence, web_evidence, limit),
             external_search_used=True,
         )
 

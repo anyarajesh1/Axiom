@@ -3,6 +3,7 @@ from uuid import uuid4
 from pytest import MonkeyPatch
 
 from app.retrieval import hybrid
+from app.retrieval.corpus import CorpusPassage
 
 
 def payload(text: str, source: str) -> dict[str, str]:
@@ -101,8 +102,39 @@ def test_low_memory_retrieval_skips_dense_embedding(
     monkeypatch.setattr(hybrid.settings, "LOW_MEMORY_MODE", True)
     monkeypatch.setattr(hybrid, "dense_search", fail_dense)
     monkeypatch.setattr(hybrid, "scroll_passages", lambda: records)
+    monkeypatch.setattr(hybrid, "load_corpus", list)
 
     result = hybrid.retrieve_local("earthquake magnitude logarithmic scale")
 
     assert result.evidence[0].id == earthquake_id
     assert result.relevance == 1.0
+
+
+def test_low_memory_retrieval_includes_bundled_ev_evidence(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    passage = CorpusPassage(
+        text=(
+            "The expected lifetime of an electric vehicle battery is 12 to "
+            "15 years in moderate climates and 8 to 12 years in extreme "
+            "climates."
+        ),
+        source_name="US Department of Energy",
+        source_url="https://afdc.energy.gov/fuels/electricity-benefits",
+        category="climate_energy",
+    )
+
+    def fail_dense(*_args: object, **_kwargs: object) -> list:
+        raise AssertionError("Dense embedding must not run in low-memory mode")
+
+    monkeypatch.setattr(hybrid.settings, "LOW_MEMORY_MODE", True)
+    monkeypatch.setattr(hybrid, "dense_search", fail_dense)
+    monkeypatch.setattr(hybrid, "scroll_passages", list)
+    monkeypatch.setattr(hybrid, "load_corpus", lambda: [passage])
+
+    result = hybrid.retrieve_local(
+        "Every electric vehicle battery must be replaced after five years."
+    )
+
+    assert result.evidence[0].source_name == "US Department of Energy"
+    assert result.relevance >= 0.5

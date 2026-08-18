@@ -6,7 +6,13 @@ from typing import Any
 from uuid import UUID
 
 from app.config import settings
-from app.retrieval.store import dense_search, scroll_passages
+from app.retrieval.corpus import load_corpus
+from app.retrieval.store import (
+    dense_search,
+    passage_id,
+    passage_payload,
+    scroll_passages,
+)
 from app.schemas import Evidence
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
@@ -23,11 +29,13 @@ STOP_WORDS = {
     "by",
     "for",
     "from",
+    "every",
     "has",
     "have",
     "in",
     "is",
     "it",
+    "must",
     "of",
     "on",
     "or",
@@ -52,8 +60,30 @@ def tokenize(text: str) -> list[str]:
     return TOKEN_PATTERN.findall(text.lower())
 
 
+def normalize_token(token: str) -> str:
+    if len(token) > 4 and token.endswith("ies"):
+        return f"{token[:-3]}y"
+    if token == "years":
+        return "year"
+    return token
+
+
 def meaningful_tokens(text: str) -> set[str]:
-    return {token for token in tokenize(text) if token not in STOP_WORDS}
+    return {
+        normalize_token(token)
+        for token in tokenize(text)
+        if token not in STOP_WORDS
+    }
+
+
+def bundled_records() -> list[tuple[UUID, dict[str, Any]]]:
+    return [
+        (
+            passage_id(str(passage.source_url), passage.text),
+            passage_payload(passage),
+        )
+        for passage in load_corpus()
+    ]
 
 
 def lexical_rank(
@@ -106,6 +136,13 @@ def retrieve_local(query: str, limit: int = 5) -> LocalRetrieval:
         else dense_search(query, limit=max(limit * 2, 10))
     )
     records = scroll_passages()
+    if settings.LOW_MEMORY_MODE:
+        records = list(
+            {
+                point_id: payload
+                for point_id, payload in [*records, *bundled_records()]
+            }.items()
+        )
     payloads = {point_id: payload for point_id, payload in records}
     payloads.update({point_id: payload for point_id, payload, _ in dense})
     lexical = lexical_rank(query, records)
