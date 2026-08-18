@@ -71,3 +71,18 @@ def test_ranker_combines_relevance_and_entailment_confidence() -> None:
 
     assert [item.id for item in ranked] == [relevant.id]
     assert ranked[0].combined_score == 0.6
+
+
+def test_ranker_excludes_high_confidence_neutral_evidence() -> None:
+    supporting = make_evidence(0.8)
+    neutral = make_evidence(0.9)
+
+    ranked = rank_evidence(
+        [neutral, supporting],
+        [
+            make_result(neutral, "neutral", 0.99),
+            make_result(supporting, "entailment", 0.9),
+        ],
+    )
+
+    assert [item.id for item in ranked] == [supporting.id]

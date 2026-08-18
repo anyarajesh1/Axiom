@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import math
-import re
 from collections.abc import Callable, Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from app.config import settings
+from app.retrieval.hybrid import meaningful_tokens
 from app.schemas import Evidence
 
 if TYPE_CHECKING:
     from sentence_transformers import CrossEncoder
 
 ScorePairs = Callable[[list[tuple[str, str]]], Sequence[float]]
-TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 class RerankerError(RuntimeError):
@@ -45,10 +44,10 @@ def lightweight_rerank(
     evidence: list[Evidence],
     top_k: int,
 ) -> list[Evidence]:
-    claim_tokens = set(TOKEN_PATTERN.findall(claim.lower()))
+    claim_tokens = meaningful_tokens(claim)
     reranked = []
     for item in evidence:
-        evidence_tokens = set(TOKEN_PATTERN.findall(item.text.lower()))
+        evidence_tokens = meaningful_tokens(item.text)
         overlap = (
             len(claim_tokens & evidence_tokens) / len(claim_tokens)
             if claim_tokens

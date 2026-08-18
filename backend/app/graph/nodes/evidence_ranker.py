@@ -13,7 +13,11 @@ def rank_evidence(
 
     for item in evidence:
         result = entailment_by_id.get(item.id)
-        if result is None or item.reranker_score is None:
+        if (
+            result is None
+            or result.label == "neutral"
+            or item.reranker_score is None
+        ):
             continue
         combined_score = item.reranker_score * result.confidence
         if combined_score < MIN_COMBINED_SCORE:

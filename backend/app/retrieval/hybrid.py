@@ -60,7 +60,9 @@ def lexical_rank(
     query: str,
     records: list[tuple[UUID, dict[str, Any]]],
 ) -> list[tuple[UUID, float]]:
-    query_tokens = tokenize(query)
+    query_tokens = [
+        token for token in tokenize(query) if token not in STOP_WORDS
+    ]
     if not query_tokens or not records:
         return []
 
