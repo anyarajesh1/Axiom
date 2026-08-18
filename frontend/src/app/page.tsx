@@ -88,19 +88,19 @@ export default function Home() {
           </p>
           <span className="flex items-center gap-2 text-xs font-medium text-[#c7f36b]">
             <span className="h-2 w-2 rounded-full bg-[#c7f36b]" />
-            Research mode
+            Live analysis
           </span>
         </div>
       </div>
 
       <div id="top" className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-        <header className="grid gap-10 border-x border-[#17201c]/15 px-5 pt-14 pb-12 sm:px-10 sm:pt-20 lg:grid-cols-[1.25fr_0.75fr] lg:px-14 lg:pt-24 lg:pb-16">
+        <header className="grid gap-8 border-x border-[#17201c]/15 px-5 pt-12 pb-10 sm:px-10 sm:pt-16 sm:pb-12 lg:grid-cols-[1fr_0.8fr] lg:items-end lg:px-14 lg:pt-18 lg:pb-14">
           <div>
             <p className="mb-5 font-mono text-xs font-semibold tracking-[0.22em] text-[#d54b2a] uppercase">
               Claim intelligence / 01
             </p>
-            <h1 className="max-w-4xl text-5xl leading-[0.94] font-semibold tracking-[-0.055em] sm:text-7xl lg:text-[6.25rem]">
-              Don&apos;t just read it. Test it.
+            <h1 className="max-w-3xl text-4xl leading-[1.02] font-semibold tracking-[-0.045em] sm:text-5xl lg:text-6xl">
+              See what the evidence says.
             </h1>
           </div>
           <div className="flex items-end">
