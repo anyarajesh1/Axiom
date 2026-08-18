@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L6-v2"
     ENTAILMENT_MODEL: str = "cross-encoder/nli-MiniLM2-L6-H768"
     RETRIEVAL_FALLBACK_THRESHOLD: float = Field(default=0.5, ge=0, le=1)
+    LOW_MEMORY_MODE: bool = False
     USE_HF_INFERENCE_API: bool = False
     HF_TOKEN: str | None = None
     DATABASE_URL: str = Field(min_length=1)

@@ -62,3 +62,35 @@ def test_weak_result_expands_index_and_retries(
 
     assert outcome.evidence == [evidence]
     assert outcome.external_search_used is True
+
+
+def test_low_memory_fallback_returns_web_results_without_upsert(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    passage = CorpusPassage(
+        text="Earthquake magnitude is measured on a logarithmic scale.",
+        source_name="USGS",
+        source_url="https://www.usgs.gov/programs/earthquake-hazards",
+        category="science",
+    )
+    monkeypatch.setattr(service.settings, "LOW_MEMORY_MODE", True)
+    monkeypatch.setattr(
+        service,
+        "retrieve_local",
+        lambda *_: LocalRetrieval([], relevance=0),
+    )
+    monkeypatch.setattr(
+        service,
+        "search_tavily",
+        lambda *_args, **_kwargs: [passage],
+    )
+
+    def fail_upsert(*_args: object, **_kwargs: object) -> int:
+        raise AssertionError("Web results must not be embedded in low-memory mode")
+
+    monkeypatch.setattr(service, "upsert_passages", fail_upsert)
+
+    outcome = service.retrieve_evidence("earthquake magnitude logarithmic")
+
+    assert outcome.external_search_used is True
+    assert outcome.evidence[0].source_name == "USGS"

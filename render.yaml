@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-render.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
@@ -28,3 +28,5 @@ services:
         sync: false
       - key: USE_HF_INFERENCE_API
         value: "false"
+      - key: LOW_MEMORY_MODE
+        value: "true"

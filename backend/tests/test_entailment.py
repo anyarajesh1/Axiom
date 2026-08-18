@@ -72,3 +72,35 @@ def test_hf_output_parser_accepts_named_labels() -> None:
     )
 
     assert scores == [0.05, 0.8, 0.15]
+
+
+def test_groq_low_memory_output_maps_to_model_score_order() -> None:
+    scores = entailment.predict_groq(
+        [("Earthquake magnitude is logarithmic.", "The scale is logarithmic.")],
+        request=lambda _: (
+            '{"results":[{"index":0,"label":"entailment",'
+            '"confidence":0.9}]}'
+        ),
+    )
+
+    assert scores == [[pytest.approx(0.05), 0.9, pytest.approx(0.05)]]
+
+
+def test_low_memory_entailment_uses_groq_path(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    evidence = make_evidence("Earthquake magnitude is logarithmic.")
+    monkeypatch.setattr(entailment.settings, "LOW_MEMORY_MODE", True)
+    monkeypatch.setattr(
+        entailment,
+        "predict_groq",
+        lambda _: [[0.02, 0.95, 0.03]],
+    )
+
+    result = entailment.score_entailment(
+        "Earthquake magnitude uses a logarithmic scale.",
+        [evidence],
+    )
+
+    assert result[0].label == "entailment"
+    assert result[0].confidence == 0.95

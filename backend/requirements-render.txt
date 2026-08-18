@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+langgraph
+qdrant-client
+groq
+sqlmodel
+psycopg[binary]
+python-dotenv
+httpx

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from app.config import settings
 from app.retrieval.store import dense_search, scroll_passages
 from app.schemas import Evidence
 
@@ -97,7 +98,11 @@ def lexical_rank(
 
 
 def retrieve_local(query: str, limit: int = 5) -> LocalRetrieval:
-    dense = dense_search(query, limit=max(limit * 2, 10))
+    dense = (
+        []
+        if settings.LOW_MEMORY_MODE
+        else dense_search(query, limit=max(limit * 2, 10))
+    )
     records = scroll_passages()
     payloads = {point_id: payload for point_id, payload in records}
     payloads.update({point_id: payload for point_id, payload, _ in dense})

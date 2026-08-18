@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Callable, Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
     from sentence_transformers import CrossEncoder
 
 ScorePairs = Callable[[list[tuple[str, str]]], Sequence[float]]
+TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 class RerankerError(RuntimeError):
@@ -38,6 +40,31 @@ def sigmoid(value: float) -> float:
     return 1 / (1 + math.exp(-bounded))
 
 
+def lightweight_rerank(
+    claim: str,
+    evidence: list[Evidence],
+    top_k: int,
+) -> list[Evidence]:
+    claim_tokens = set(TOKEN_PATTERN.findall(claim.lower()))
+    reranked = []
+    for item in evidence:
+        evidence_tokens = set(TOKEN_PATTERN.findall(item.text.lower()))
+        overlap = (
+            len(claim_tokens & evidence_tokens) / len(claim_tokens)
+            if claim_tokens
+            else 0
+        )
+        relevance = min(1.0, max(item.score * 0.8, overlap))
+        reranked.append(
+            item.model_copy(update={"reranker_score": round(relevance, 6)})
+        )
+    return sorted(
+        reranked,
+        key=lambda item: item.reranker_score or 0,
+        reverse=True,
+    )[:top_k]
+
+
 def rerank_evidence(
     claim: str,
     evidence: list[Evidence],
@@ -46,6 +73,9 @@ def rerank_evidence(
 ) -> list[Evidence]:
     if not evidence:
         return []
+
+    if predict is None and settings.LOW_MEMORY_MODE:
+        return lightweight_rerank(claim, evidence, top_k)
 
     try:
         scores = list(

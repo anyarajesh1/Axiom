@@ -79,3 +79,30 @@ def test_common_words_do_not_make_an_unrelated_query_relevant(
     result = hybrid.retrieve_local("The sky is blue.")
 
     assert result.relevance == 0.2
+
+
+def test_low_memory_retrieval_skips_dense_embedding(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    earthquake_id = uuid4()
+    records = [
+        (
+            earthquake_id,
+            payload(
+                "Earthquake magnitude uses a logarithmic scale.",
+                "USGS",
+            ),
+        )
+    ]
+
+    def fail_dense(*_args: object, **_kwargs: object) -> list:
+        raise AssertionError("Dense embedding must not run in low-memory mode")
+
+    monkeypatch.setattr(hybrid.settings, "LOW_MEMORY_MODE", True)
+    monkeypatch.setattr(hybrid, "dense_search", fail_dense)
+    monkeypatch.setattr(hybrid, "scroll_passages", lambda: records)
+
+    result = hybrid.retrieve_local("earthquake magnitude logarithmic scale")
+
+    assert result.evidence[0].id == earthquake_id
+    assert result.relevance == 1.0

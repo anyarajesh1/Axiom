@@ -1,7 +1,9 @@
 from uuid import uuid4
 
 import pytest
+from pytest import MonkeyPatch
 
+from app.graph.nodes import reranker
 from app.graph.nodes.reranker import RerankerError, rerank_evidence
 from app.schemas import Evidence
 
@@ -41,3 +43,21 @@ def test_reranker_rejects_wrong_result_count() -> None:
             [make_evidence("A passage long enough for this test.")],
             predict=lambda _: [],
         )
+
+
+def test_low_memory_reranker_avoids_cross_encoder(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    unrelated = make_evidence("Mars has a thin atmosphere.")
+    relevant = make_evidence(
+        "Earthquake magnitude uses a logarithmic scale."
+    )
+    monkeypatch.setattr(reranker.settings, "LOW_MEMORY_MODE", True)
+
+    results = rerank_evidence(
+        "Earthquake magnitude is logarithmic.",
+        [unrelated, relevant],
+    )
+
+    assert results[0].id == relevant.id
+    assert results[0].reranker_score is not None

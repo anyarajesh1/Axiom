@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Sequence
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
 import httpx
+from groq import Groq
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.config import settings
 from app.schemas import EntailmentLabel, EntailmentResult, Evidence
@@ -22,6 +25,26 @@ ScorePairs = Callable[
     [list[tuple[str, str]]],
     Sequence[Sequence[float]],
 ]
+
+GROQ_SYSTEM_PROMPT = """Classify whether each evidence passage entails,
+contradicts, or is neutral toward the claim. Use only the supplied text, not
+outside knowledge. Return one result for every zero-based evidence index.
+Confidence must reflect how directly the passage determines the label.
+"""
+
+
+class RemoteEntailmentItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    index: int = Field(ge=0)
+    label: EntailmentLabel
+    confidence: float = Field(ge=0, le=1)
+
+
+class RemoteEntailmentBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    results: list[RemoteEntailmentItem]
 
 
 class EntailmentError(RuntimeError):
@@ -112,6 +135,76 @@ def predict_hf(
     return rows
 
 
+def request_groq_entailment(prompt: str) -> str:
+    with Groq(
+        api_key=settings.GROQ_API_KEY,
+        timeout=30.0,
+        max_retries=2,
+    ) as client:
+        response = client.chat.completions.create(
+            model=settings.GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": GROQ_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "axiom_entailment_batch",
+                    "strict": True,
+                    "schema": RemoteEntailmentBatch.model_json_schema(),
+                },
+            },
+            temperature=0,
+            max_tokens=1200,
+        )
+    content = response.choices[0].message.content
+    if not content:
+        raise EntailmentError("Groq returned an empty NLI response.")
+    return content
+
+
+def predict_groq(
+    pairs: list[tuple[str, str]],
+    request: Callable[[str], str] | None = None,
+) -> Sequence[Sequence[float]]:
+    if not pairs:
+        return []
+
+    prompt = json.dumps(
+        {
+            "claim": pairs[0][1],
+            "evidence": [
+                {"index": index, "text": evidence_text}
+                for index, (evidence_text, _) in enumerate(pairs)
+            ],
+        },
+        separators=(",", ":"),
+    )
+    try:
+        content = (request or request_groq_entailment)(prompt)
+        batch = RemoteEntailmentBatch.model_validate_json(content)
+    except EntailmentError:
+        raise
+    except (ValidationError, ValueError) as error:
+        raise EntailmentError("Groq returned invalid NLI output.") from error
+    except Exception as error:
+        raise EntailmentError("Axiom could not reach Groq for NLI.") from error
+
+    by_index = {item.index: item for item in batch.results}
+    if set(by_index) != set(range(len(pairs))):
+        raise EntailmentError("Groq returned an unexpected NLI result set.")
+
+    rows: list[list[float]] = []
+    for index in range(len(pairs)):
+        result = by_index[index]
+        remainder = (1 - result.confidence) / 2
+        scores = {label: remainder for label in LABELS}
+        scores[result.label] = result.confidence
+        rows.append([scores[label] for label in LABELS])
+    return rows
+
+
 def score_entailment(
     claim: str,
     evidence: list[Evidence],
@@ -122,7 +215,12 @@ def score_entailment(
 
     inference = predict
     if inference is None:
-        inference = predict_hf if settings.USE_HF_INFERENCE_API else predict_local
+        if settings.LOW_MEMORY_MODE:
+            inference = predict_groq
+        elif settings.USE_HF_INFERENCE_API:
+            inference = predict_hf
+        else:
+            inference = predict_local
 
     try:
         rows = list(
